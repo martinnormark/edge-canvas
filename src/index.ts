@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { serveStatic } from 'hono/cloudflare-workers';
 export { DurableObjectExample } from './DurableObjects/DurableObjectExample';
 import { Env } from './environment';
 import workspaceApi from './workspace';
@@ -8,7 +9,7 @@ const app = new Hono<{
 	Bindings: Env;
 }>();
 
-app.get('/', (c) => c.text('Hello Cloudflare Workers!'));
+app.get('/app/*', serveStatic({ root: './' }));
 app.route('/test', testApi);
 app.route('/workspaces', workspaceApi);
 
