@@ -23,10 +23,43 @@ export interface Env {
 	//
 	// Example binding to a Queue. Learn more at https://developers.cloudflare.com/queues/javascript-apis/
 	// MY_QUEUE: Queue;
+
+	EXAMPLE_CLASS: DurableObjectNamespace;
+}
+
+export class DurableObjectExample {
+	state: DurableObjectState;
+	createdOn: Date;
+	loadedFromStorage: boolean = false;
+
+	constructor(state: DurableObjectState, env: Env) {
+		this.state = state;
+		this.createdOn = new Date();
+
+		this.state.blockConcurrencyWhile(async () => {
+			let value = await this.state.storage.get<Date>('createdOn');
+			if (value) {
+				this.createdOn = value;
+				this.loadedFromStorage = true;
+			} else {
+				await this.state.storage.put<Date>('createdOn', this.createdOn);
+			}
+		});
+	}
+
+	async fetch(request: Request) {
+		return new Response(`Hello World, created on ${this.createdOn.toISOString()} ${this.loadedFromStorage ? '(loaded from storage)' : ''}`);
+	}
 }
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		return new Response('Hello World!');
+		let id = env.EXAMPLE_CLASS.idFromName(new URL(request.url).pathname);
+
+		let stub = env.EXAMPLE_CLASS.get(id);
+
+		let response = await stub.fetch(request);
+
+		return response;
 	},
 };
